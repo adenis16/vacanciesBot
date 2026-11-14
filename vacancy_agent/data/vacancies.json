@@ -1,0 +1,25 @@
+[
+    {
+        "vacancy_id": "vacancy_001",
+        "source": "rabota.sber.ru",
+        "source_id": "4584706",
+        "url": "https://rabota.sber.ru/search/python-razrabotchik-4584706/",
+        "title": "Python разработчик",
+        "company": "ПАО Сбербанк",
+        "location": "Москва",
+        "salary_min": 100000,
+        "salary_max": 150000,
+        "currency": "RUB",
+        "experience": null,
+        "employment_type": null,
+        "work_format": null,
+        "required_skills": [
+            "Python",
+            "FastAPI"
+        ],
+        "optional_skills": [],
+        "description": null,
+        "published_at": "2026-11-10",
+        "collected_at": "2026-11-14T12:00:00+03:00"
+    }
+]

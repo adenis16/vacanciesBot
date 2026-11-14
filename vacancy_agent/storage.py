@@ -1,35 +1,25 @@
-from datetime import date, datetime
-from pydantic import BaseModel, Field, model_validator
+import json
+from pathlib import Path
+from models import Vacancy
+# Чтение и запись JSON
+
+def save_vacancies(vacancies, filename="data/vacancies.json"):
+    vacancy_dicts = [vacancy.model_dump(mode="json") for vacancy in vacancies]
+
+    path = Path(filename)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(path, "w", encoding="utf-8") as file:
+        json.dump(vacancy_dicts, file, ensure_ascii=False, indent=4)
 
 
+def load_vacancies(filename="data/vacancies.json"):
+    path = Path(filename)
+    if not path.exists():
+        return []
 
-class Vacancy(BaseModel):
-    vacancy_id: str
-    source_id: str
-    url: str
-    title: str
-    company: str | None = None
-    location: str | None = None
-    salary_min: int | None = Field(default=None, ge=0) 
-    salary_max: int | None = Field(default=None, ge=0)
-    currency: str | None = None
-    experience: str | None = None
-    employment_type: str | None = None
-    work_format: str | None = None
-    required_skills: list[str] = Field(default_factory=list)
-    optional_skills: list[str] = Field(default_factory=list)
-    published_at: date | None = None
-    collected_at: datetime
+    with open(path, "r", encoding="utf-8") as file:
+        vacancy_dicts = json.load(file)
 
-    @model_validator(mode="after")
-    def check_salary_range(self):
-        if (
-            self.salary_min is not None
-            and self.salary_max is not None
-            and self.salary_max < self.salary_min
-        ):
-            raise ValueError(
-                "Максимальная зарплата не может быть меньше минимальной"
-            )
-
-        return self
+    return vacancy_dicts
+    
