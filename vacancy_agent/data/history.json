@@ -1,0 +1,58 @@
+[
+    {
+        "vacancy_id": "vacancy_123",
+        "changed_at": "2026-11-19T19:13:25.358463+00:00",
+        "changes": {
+            "salary_min": {
+                "old": 150000,
+                "new": 180000
+            },
+            "work_format": {
+                "old": "office",
+                "new": "hybrid"
+            }
+        }
+    },
+    {
+        "vacancy_id": "vac_001",
+        "changed_at": "2026-11-19T19:26:24.983442+00:00",
+        "changes": {
+            "salary_min": {
+                "old": 150000,
+                "new": 180000
+            },
+            "salary_max": {
+                "old": 220000,
+                "new": 250000
+            },
+            "required_skills": {
+                "old": [
+                    "Python",
+                    "FastAPI",
+                    "PostgreSQL"
+                ],
+                "new": [
+                    "Python",
+                    "FastAPI",
+                    "PostgreSQL",
+                    "SQLAlchemy"
+                ]
+            },
+            "optional_skills": {
+                "old": [
+                    "Docker",
+                    "Redis"
+                ],
+                "new": [
+                    "Docker",
+                    "Redis",
+                    "Celery"
+                ]
+            },
+            "description": {
+                "old": "Разработка backend-сервисов",
+                "new": "Разработка высоконагруженных backend-сервисов"
+            }
+        }
+    }
+]

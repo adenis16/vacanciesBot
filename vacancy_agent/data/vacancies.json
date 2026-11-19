@@ -1,25 +1,61 @@
 [
     {
-        "vacancy_id": "vacancy_001",
-        "source": "rabota.sber.ru",
-        "source_id": "4584706",
-        "url": "https://rabota.sber.ru/search/python-razrabotchik-4584706/",
-        "title": "Python разработчик",
-        "company": "ПАО Сбербанк",
+        "vacancy_id": "hh-139630638",
+        "source": "HeadHunter",
+        "source_id": "139630638",
+        "url": "https://hh.ru/vacancy/139630638",
+        "title": "Python-разработчик",
+        "company": "Ventra",
         "location": "Москва",
-        "salary_min": 100000,
-        "salary_max": 150000,
-        "currency": "RUB",
-        "experience": null,
-        "employment_type": null,
-        "work_format": null,
+        "salary_min": null,
+        "salary_max": null,
+        "currency": null,
+        "experience": "1–3 года",
+        "employment_type": "частичная занятость",
+        "work_format": "удалённая работа",
         "required_skills": [
             "Python",
-            "FastAPI"
+            "C#",
+            "Power Shell",
+            "VBA"
         ],
         "optional_skills": [],
+        "description": "Разработка автоматизаций (Python) по готовому ТЗ, взаимодействие с бизнес-аналитиками и пользователями, поддержка и доработка существующих проектов, рефакторинг существующего кода.",
+        "published_at": "2026-11-18",
+        "collected_at": "2026-11-19T00:00:00"
+    },
+    {
+        "vacancy_id": "sber-4578546",
+        "source": "Сбер",
+        "source_id": null,
+        "url": "https://rabota.sber.ru/search/python-razработka-ai-agentov-4578546/",
+        "title": "Python — разработка AI-агентов",
+        "company": "ПАО Сбербанк",
+        "location": "Москва",
+        "salary_min": null,
+        "salary_max": null,
+        "currency": null,
+        "experience": "3+ года в backend-разработке",
+        "employment_type": null,
+        "work_format": "офисный формат работы на период адаптации, далее возможен гибридный формат работы",
+        "required_skills": [
+            "Python (FastAPI, Django)",
+            "Java",
+            "Go",
+            "LLM-фреймворки (LangChain, LlamaIndex)",
+            "PostgreSQL",
+            "Redis",
+            "MongoDB",
+            "Микросервисы",
+            "event-driven архитектура"
+        ],
+        "optional_skills": [
+            "навыки работы с генеративными AI-моделями",
+            "опыт создания AI-агентов и использования их в работе",
+            "опыт использования GigaChat, Kandinsky и аналогов"
+        ],
         "description": null,
-        "published_at": "2026-11-10",
-        "collected_at": "2026-11-14T12:00:00+03:00"
+        "published_at": null,
+        "collected_at": "2026-11-19T00:00:00"
     }
 ]

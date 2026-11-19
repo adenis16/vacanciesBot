@@ -1,7 +1,9 @@
 from pydantic import ValidationError
 from models import Vacancy
-from storage import save_vacancies, load_vacancies
+from storage import save_vacancies, load_vacancies, save_history
 from datetime import datetime, timezone
+import re
+
 
 # Обработка, проверка и сравнение вакансий
 
@@ -21,7 +23,7 @@ def merge_vacancies(new_vacancies, existing_vacancies):
     for new_vacancy in new_vacancies:
         duplicate_index = None
 
-        # Ищем существующую вакансию-дубликат
+        # Ищем дубликат
         for index, old_vacancy in enumerate(merged_vacancies):
             if is_duplicate(new_vacancy, [old_vacancy]):
                 duplicate_index = index
@@ -34,10 +36,21 @@ def merge_vacancies(new_vacancies, existing_vacancies):
         # Если найден — обновляем существующую
         else:
             old_vacancy = merged_vacancies[duplicate_index]
-            merged_vacancies[duplicate_index] = update_vacancy(
+
+            # Определяем изменения
+            changes = get_vacancy_changes(old_vacancy, new_vacancy)
+
+            # Сохраняем изменения в истории
+            if changes:
+                save_history(old_vacancy.vacancy_id, changes)
+
+            # Обновляем вакансию
+            updated_vacancy = update_vacancy(
                 old_vacancy,
                 new_vacancy
             )
+
+            merged_vacancies[duplicate_index] = updated_vacancy
 
     return merged_vacancies
 
@@ -83,137 +96,261 @@ def update_vacancies(new_vacancies):
         "total": len(merged_vacancies)
     }
 
-# # save_vacancies(valid_vacancies)
-vacancies_data = [{
-    "vacancy_id": "vacancy_001",
-    "source": "rabota.sber.ru",
-    "source_id": "4584706",
-    "url": "https://rabota.sber.ru/search/python-razrabotchik-4584706/",
-    "title": "Python разработчик",
-    "company": "ПАО Сбербанк",
-    "location": "Москва",
-    "salary_min": 100000,
-    "salary_max": 150000,
-    "currency": "RUB",
-    "required_skills": ["Python", "FastAPI"],
-    "published_at": "2026-11-10",
-    "collected_at": "2026-11-14T12:00:00+03:00"
-}]
+def get_vacancy_changes(old_vacancy, new_vacancy): 
+    old_data = old_vacancy.model_dump()
+    new_data = new_vacancy.model_dump()
 
-result = update_vacancies(vacancies_data)
-print(result)
+    protected_fields = {
+        "vacancy_id",
+        "source",
+        "source_id",
+        "collected_at"
+    }
 
-# valid_vacancies = []
-# invalid_vacancies = []
+    changes = {}
 
-# for item in vacancies_data:
-#     try:
-#         vacancy = Vacancy(**item)
-#         valid_vacancies.append(vacancy)
-#     except ValidationError as error:
-#         invalid_vacancies.append({"data": item, "errors": error.errors()})
+    for field, new_value in new_data.items():
+        if field in protected_fields:
+            continue
 
-# save_vacancies(valid_vacancies)
-# print(f"Успешно проверено: {len(valid_vacancies)}")
-# print(f"Ошибок: {len(invalid_vacancies)}")
-# data = load_vacancies()
+        if new_value is None:
+            continue
 
-# print(type(data))
-# print(type(data[0]) if data else "Список пуст")
+        old_value = old_data[field]
+
+        if old_value != new_value:
+            changes[field] = {
+                "old": old_value,
+                "new": new_value
+            }
+
+    return changes
+
+def parse_experience(value):
+    if not value:
+        return None
+
+    value = value.lower().strip().replace(",", ".")
+
+    # Диапазон: 3-6 лет, 1–3 года
+    match = re.search(
+        r"(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)",
+        value
+    )
+
+    if match:
+        return float(match.group(1)), float(match.group(2))
+
+    # От N лет / не менее N лет
+    match = re.search(
+        r"(?:от|не\s+менее)\s*(\d+(?:\.\d+)?)",
+        value
+    )
+
+    if match:
+        return float(match.group(1)), None
+
+    # До N лет
+    match = re.search(
+        r"до\s*(\d+(?:\.\d+)?)",
+        value
+    )
+
+    if match:
+        return 0.0, float(match.group(1))
+
+    return None
+
+def compare_experience(candidate_experience, vacancy_experience):
+    candidate = parse_experience(candidate_experience)
+    vacancy = parse_experience(vacancy_experience)
+
+    if candidate is None or vacancy is None:
+        return None
+
+    candidate_min, candidate_max = candidate
+    vacancy_min, vacancy_max = vacancy
+
+    # Проверяем полное соответствие диапазонов
+    if (
+    candidate_min >= vacancy_min
+    and (
+        vacancy_max is None
+        or (
+            candidate_max is not None
+            and candidate_max <= vacancy_max
+        )
+    )
+    ):
+        return 15
+
+    # Проверяем пересечение диапазонов
+    candidate_upper = (
+        float("inf") if candidate_max is None else candidate_max
+    )
+    vacancy_upper = (
+        float("inf") if vacancy_max is None else vacancy_max
+    )
+
+    if max(candidate_min, vacancy_min) <= min(
+        candidate_upper, vacancy_upper
+    ):
+        return 10
+
+    return 0
 
 
-# vacancy_dicts = load_vacancies()
+def calculate_score(vacancy, profile):
+    score = 0
+    max_score = 0
+    details = {}
 
-# valid_vacancies = []
-# invalid_vacancies = []
+    # 1. Обязательные навыки
+    vacancy_skills = {
+        skill.lower() for skill in vacancy.required_skills
+    }
+    profile_skills = {
+        skill.lower() for skill in profile.get("required_skills", [])
+    }
 
-# for item in vacancy_dicts:
-#     try:
-#         vacancy = Vacancy(**item)
-#         valid_vacancies.append(vacancy)
-#     except ValidationError as error:
-#         invalid_vacancies.append({
-#             "data": item,
-#             "errors": error.errors()
-#         })
+    if vacancy_skills and profile_skills:
+        matched_skills = vacancy_skills & profile_skills
 
-# print(f"Корректных вакансий: {len(valid_vacancies)}")
-# print(f"Некорректных вакансий: {len(invalid_vacancies)}")
+        points = 40 * len(matched_skills) / len(profile_skills)
+
+        score += points
+        max_score += 40
+
+        details["required_skills"] = {
+            "score": round(points, 2),
+            "max_score": 40,
+            "matched": sorted(matched_skills),
+            "missing": sorted(profile_skills - vacancy_skills)
+        }
+    else:
+        details["required_skills"] = None
+
+    # 2. Минимальная зарплата
+    salary_min = profile.get("salary_min")
+
+    if vacancy.salary_min is not None and salary_min is not None:
+        points = 15 if vacancy.salary_min >= salary_min else 0
+
+        score += points
+        max_score += 15
+
+        details["salary_min"] = {
+            "score": points,
+            "max_score": 15
+        }
+    else:
+        details["salary_min"] = None
+
+    # 3. Максимальная зарплата
+    salary_max = profile.get("salary_max")
+
+    if vacancy.salary_max is not None and salary_max is not None:
+        if vacancy.salary_max >= salary_max:
+            points = 15
+        elif vacancy.salary_max >= salary_max * 0.9:
+            points = 10
+        elif vacancy.salary_max >= salary_max * 0.7:
+            points = 5
+        else:
+            points = 0
+
+        score += points
+        max_score += 15
+
+        details["salary_max"] = {
+            "score": points,
+            "max_score": 15
+        }
+    else:
+        details["salary_max"] = None
+
+    # 4. Опыт
+    candidate_experience = profile.get("experience")
+    vacancy_experience = vacancy.experience
+
+    experience_points = compare_experience(
+        candidate_experience,
+        vacancy_experience
+        )
+
+    if experience_points is not None:
+        score += experience_points
+        max_score += 15
+
+        details["experience"] = {
+            "score": experience_points,
+            "max_score": 15
+    }
+    else:
+        details["experience"] = None
+
+    # 5. Местоположение
+    if vacancy.work_format != "remote":
+        location = profile.get("location")
+
+        if vacancy.location and location:
+            points = (
+                15
+                if vacancy.location.lower() == location.lower()
+                else 0
+            )
+
+            score += points
+            max_score += 15
+
+            details["location"] = {
+                "score": points,
+                "max_score": 15
+            }
+        else:
+            details["location"] = None
+    else:
+        details["location"] = None
+
+    if max_score == 0:
+        return {
+            "score": None,
+            "details": details,
+            "available_points": 0
+        }
+    coverage = round(max_score, 2)
+
+    return {
+        "score": round(score / max_score * 100, 2),
+        "details": details,
+        "available_points": max_score,
+        "coverage": coverage
+}
 
 
+def rank_vacancies(vacancies, profile, min_coverage=50):
+    ranked_vacancies = []
+
+    for vacancy in vacancies:
+        result = calculate_score(vacancy, profile)
+
+        ranked_vacancies.append({
+            "vacancy": vacancy,
+            "score": result["score"],
+            "details": result["details"],
+            "available_points": result["available_points"],
+            "coverage": result["coverage"], 
+        })
+
+    ranked_vacancies.sort(
+        key=lambda item: (
+            item["score"] is None,
+            item["coverage"] < min_coverage,
+            -(item["score"] or 0),
+            -item["coverage"]
+        )
+    )
+
+    return ranked_vacancies
 
 
-# Общие обязательные поля
-# base_data = {
-#     "source": "hh.ru",
-#     "url": "https://hh.ru/vacancy/123",
-#     "title": "Python разработчик",
-#     "collected_at": datetime.now(timezone.utc),
-# }
-
-# # Новая вакансия
-# new_vacancy = Vacancy(
-#     vacancy_id="new_001",
-#     source_id="123",
-#     **base_data
-# )
-
-# # Сценарий 1: тот же источник и тот же ID
-# existing_1 = Vacancy(
-#     vacancy_id="old_001",
-#     source_id="123",
-#     **base_data
-# )
-
-# # Сценарий 2: другой источник, но тот же ID
-# existing_2 = Vacancy(
-#     vacancy_id="old_002",
-#     source="rabota.ru",
-#     source_id="123",
-#     url="https://rabota.ru/vacancy/123",
-#     title="Python разработчик",
-#     collected_at=datetime.now(timezone.utc)
-# )
-
-# # Сценарий 3: тот же источник, другой ID
-# existing_3 = Vacancy(
-#     vacancy_id="old_003",
-#     source="hh.ru",  # Добавили обязательное поле
-#     source_id="456",
-#     url="https://hh.ru/vacancy/456",
-#     title="Python разработчик",
-#     collected_at=datetime.now(timezone.utc)
-# )
-
-# # Сценарий 4: у новой вакансии нет ID, но URL совпадает
-# existing_4 = Vacancy(
-#     vacancy_id="old_004",
-#     source_id="456",
-#     **base_data
-# )
-
-# # Проверки
-# tests = [
-#     ("Одинаковые source и source_id", [existing_1]),
-#     ("Разные source, одинаковый source_id", [existing_2]),
-#     ("Одинаковый source, разные source_id", [existing_3]),
-#     ("Нет ID, одинаковый URL", [existing_4]),
-# ]
-
-# new_without_id = Vacancy(
-#     vacancy_id="new_002",
-#     source_id=None,
-#     **base_data
-# )
-
-# for name, existing in tests:
-#     candidate = new_without_id if name == "Нет ID, одинаковый URL" else new_vacancy
-#     result = is_duplicate(candidate, existing)
-#     print(f"{name}: {result}")
-
-# merged = merge_vacancies(
-#     new_vacancies=[existing_1, existing_1, existing_3],
-#     existing_vacancies=[existing_2]
-# )
-
-# print(f"Итоговое количество: {len(merged)}")
